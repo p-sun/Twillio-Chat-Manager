@@ -21,3 +21,4 @@ class ChatTableCell: UITableViewCell {
         dateLabel = viewWithTag(ChatTableCell.TWCDateLabelTag) as? UILabel
     }
 }
+

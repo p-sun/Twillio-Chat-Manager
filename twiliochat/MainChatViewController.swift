@@ -18,7 +18,7 @@ class MainChatViewController: SLKTextViewController {
             title = _channel.friendlyName
             _channel.delegate = self
             
-            if _channel == ChannelManager.sharedManager.generalChannel {
+            if _channel == ChannelAccessManager.sharedManager.generalChannel {
                 navigationItem.rightBarButtonItem = nil
             }
             
@@ -74,7 +74,7 @@ class MainChatViewController: SLKTextViewController {
         tableView!.separatorStyle = .none
         
         if channel == nil {
-            channel = ChannelManager.sharedManager.generalChannel
+            channel = ChannelAccessManager.sharedManager.generalChannel
         }
 
     }

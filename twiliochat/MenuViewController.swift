@@ -24,7 +24,7 @@ class MenuViewController: UIViewController {
         refreshControl.tintColor = UIColor.white
         
         self.refreshControl.frame.origin.x -= MenuViewController.TWCRefreshControlXOffset
-        ChannelManager.sharedManager.delegate = self
+        ChannelAccessManager.sharedManager.delegate = self
         reloadChannelList()
     }
     
@@ -37,14 +37,15 @@ class MenuViewController: UIViewController {
     func channelCellForTableView(tableView: UITableView, atIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let menuCell = tableView.dequeueReusableCell(withIdentifier: "channelCell", for: indexPath as IndexPath) as! MenuTableCell
         
-        let channel = ChannelManager.sharedManager.channels![indexPath.row]
-        
-        var friendlyName = (channel as AnyObject).friendlyName
-        
-        if let name = (channel as AnyObject).friendlyName, name.isEmpty {
-            friendlyName = name
+        if let channel = ChannelAccessManager.sharedManager.channelManager.channel(index: indexPath.row) {
+            var friendlyName = channel.friendlyName //(channel as AnyObject).friendlyName
+            
+            if let name = friendlyName, name.isEmpty {
+                friendlyName = name
+            }
+            menuCell.channelName = friendlyName!
         }
-        menuCell.channelName = friendlyName!
+        
         return menuCell
     }
     
@@ -72,8 +73,8 @@ class MenuViewController: UIViewController {
                                             message: "Enter a name for this channel",
                                             placeholder: "Name",
                                             presenter: self) { text in
-                                                ChannelManager.sharedManager.createChannelWithName(name: text, completion: { _,_ in
-                                                    ChannelManager.sharedManager.populateChannels()
+                                                ChannelAccessManager.sharedManager.createChannelWithName(name: text, completion: { _,_ in
+                                                    ChannelAccessManager.sharedManager.populateChannels()
                                                 })
         }
     }
@@ -113,12 +114,14 @@ class MenuViewController: UIViewController {
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == MenuViewController.TWCOpenChannelSegue {
             let indexPath = sender as! NSIndexPath
-            let channelDescriptor = ChannelManager.sharedManager.channels![indexPath.row] as! TCHChannelDescriptor
-            let navigationController = segue.destination as! UINavigationController
             
-            channelDescriptor.channel { result, channel in
-                (navigationController.visibleViewController as! MainChatViewController).channel = channel
+            guard let channel = ChannelAccessManager.sharedManager.channelManager.channel(index: indexPath.row) else {
+                print("Could not find channel @ indexPath.row")
+                return
             }
+            
+            let navigationController = segue.destination as! UINavigationController
+            (navigationController.visibleViewController as! MainChatViewController).channel = channel
         }
     }
     
@@ -132,16 +135,14 @@ class MenuViewController: UIViewController {
 // MARK: - UITableViewDataSource
 extension MenuViewController : UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if let channels = ChannelManager.sharedManager.channels {
-            return channels.count
-        }
-        return 1
+        let count = ChannelAccessManager.sharedManager.channelManager.numberOfChannels()
+        return count == 0 ? 1 : count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell: UITableViewCell
         
-        if ChannelManager.sharedManager.channels == nil {
+        if ChannelAccessManager.sharedManager.channelManager.numberOfChannels() == 0 {
             cell = loadingCellForTableView(tableView: tableView)
         }
         else {
@@ -153,8 +154,8 @@ extension MenuViewController : UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        if let channel = ChannelManager.sharedManager.channels?.object(at: indexPath.row) as? TCHChannel {
-            return channel != ChannelManager.sharedManager.generalChannel
+        if let channel = ChannelAccessManager.sharedManager.channelManager.channel(index: indexPath.row) {
+            return channel != ChannelAccessManager.sharedManager.generalChannel
         }
         return false
     }
@@ -164,12 +165,12 @@ extension MenuViewController : UITableViewDataSource {
         if editingStyle != .delete {
             return
         }
-        if let channel = ChannelManager.sharedManager.channels?.object(at: indexPath.row) as? TCHChannel {
+        
+        if let channel = ChannelAccessManager.sharedManager.channelManager.channel(index: indexPath.row) {
             channel.destroy { result in
                 if (result?.isSuccessful())! {
                     tableView.reloadData()
-                }
-                else {
+                } else {
                     AlertDialogController.showAlertWithMessage(message: "You can not delete this channel", title: nil, presenter: self)
                 }
             }

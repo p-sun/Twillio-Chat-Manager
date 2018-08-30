@@ -5,7 +5,7 @@ class MessagingManager: NSObject {
     static let _sharedManager = MessagingManager()
     
     var client:TwilioChatClient?
-    var delegate:ChannelManager?
+    var delegate:ChannelAccessManager?
     var connected = false
     
     var userIdentity:String {
@@ -18,7 +18,7 @@ class MessagingManager: NSObject {
     
     override init() {
         super.init()
-        delegate = ChannelManager.sharedManager
+        delegate = ChannelAccessManager.sharedManager
     }
     
     class func sharedManager() -> MessagingManager {
@@ -78,7 +78,7 @@ class MessagingManager: NSObject {
     // MARK: Twilio Client
     
     func loadGeneralChatRoomWithCompletion(completion:@escaping (Bool, NSError?) -> Void) {
-        ChannelManager.sharedManager.joinGeneralChatRoomWithCompletion { succeeded in
+        ChannelAccessManager.sharedManager.joinGeneralChatRoomWithCompletion { succeeded in
             if succeeded {
                 completion(succeeded, nil)
             }
@@ -125,6 +125,7 @@ class MessagingManager: NSObject {
             TokenRequestHandler.fetchToken(params: ["device": device, "identity":SessionManager.getUsername()]) {response,error in
                 var token: String?
                 token = response["token"] as? String
+                print("\n \(token)")
                 completion(token != nil, token)
             }
         }
@@ -153,8 +154,8 @@ extension MessagingManager : TwilioChatClientDelegate {
     func chatClient(_ client: TwilioChatClient!, synchronizationStatusUpdated status: TCHClientSynchronizationStatus) {
         if status == TCHClientSynchronizationStatus.completed {
             UIApplication.shared.isNetworkActivityIndicatorVisible = false
-            ChannelManager.sharedManager.channelsList = client.channelsList()
-            ChannelManager.sharedManager.populateChannels()
+            ChannelAccessManager.sharedManager.channelsList = client.channelsList()
+            ChannelAccessManager.sharedManager.populateChannels()
             loadGeneralChatRoomWithCompletion { success, error in
                 if success {
                     self.presentRootViewController()
